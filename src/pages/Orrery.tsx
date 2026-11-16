@@ -19,6 +19,8 @@ export function Orrery() {
   const [showLabels, setShowLabels] = useState(true);
   const [showOrbits, setShowOrbits] = useState(true);
   const [mode, setMode] = useState<'schematic' | 'simulation'>('schematic');
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
+  const [tilt, setTilt] = useState(60);
   const [time, setTime] = useState(0);
   const animRef = useRef<number>(0);
 
@@ -102,6 +104,16 @@ export function Orrery() {
             <button onClick={() => setMode('simulation')} className={`flex-1 px-2 py-1 rounded text-[10px] ${mode === 'simulation' ? 'bg-zinc-700 text-zinc-200' : 'text-zinc-500 hover:bg-zinc-800'}`}>Simulation</button>
           </div>
           <div className="flex gap-1">
+            <button onClick={() => setViewMode('2d')} className={`flex-1 px-2 py-1 rounded text-[10px] ${viewMode === '2d' ? 'bg-zinc-700 text-zinc-200' : 'text-zinc-500 hover:bg-zinc-800'}`}>2D</button>
+            <button onClick={() => setViewMode('3d')} className={`flex-1 px-2 py-1 rounded text-[10px] ${viewMode === '3d' ? 'bg-zinc-700 text-zinc-200' : 'text-zinc-500 hover:bg-zinc-800'}`}>3D</button>
+          </div>
+          {viewMode === '3d' && (
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-zinc-500">Tilt:</span>
+              <input type="range" min="0" max="90" value={tilt} onChange={e => setTilt(parseInt(e.target.value))} className="flex-1 h-1 accent-indigo-500" />
+            </div>
+          )}
+          <div className="flex gap-1">
             <button onClick={() => setShowLabels(!showLabels)} className={`flex-1 px-2 py-1 rounded text-[10px] ${showLabels ? 'bg-zinc-700 text-zinc-200' : 'text-zinc-500 hover:bg-zinc-800'}`}>Labels</button>
             <button onClick={() => setShowOrbits(!showOrbits)} className={`flex-1 px-2 py-1 rounded text-[10px] ${showOrbits ? 'bg-zinc-700 text-zinc-200' : 'text-zinc-500 hover:bg-zinc-800'}`}>Orbits</button>
           </div>
@@ -125,7 +137,8 @@ export function Orrery() {
       </div>
 
       {/* Orrery visualization */}
-      <div className="flex-1 relative overflow-hidden bg-zinc-950">
+      <div className="flex-1 relative overflow-hidden bg-zinc-950" style={viewMode === '3d' ? { perspective: '1000px' } : {}}>
+        <div style={viewMode === '3d' ? { transformStyle: 'preserve-3d', transform: `rotateX(${tilt}deg)`, width: '100%', height: '100%', position: 'absolute', inset: 0 } : {}}>
         <svg
           width="100%"
           height="100%"
@@ -186,6 +199,7 @@ export function Orrery() {
             );
           })}
         </svg>
+        </div>
 
         {/* Selected body info */}
         {selected && (
@@ -214,7 +228,7 @@ export function Orrery() {
 
         {/* Info */}
         <div className="absolute bottom-3 left-3 bg-zinc-900/80 border border-zinc-800 rounded px-2 py-1 text-[10px] text-zinc-500">
-          {uniBodies.length} bodies | {mode} mode | Time: {time.toFixed(1)}s
+          {uniBodies.length} bodies | {viewMode.toUpperCase()} {mode} | Time: {time.toFixed(1)}s
         </div>
       </div>
 

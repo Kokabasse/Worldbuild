@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { v4 as uuid } from 'uuid';
-import { Plus, Trash2, Eye, EyeOff, MousePointer, Move, Square, Minus, ZoomIn, ZoomOut } from 'lucide-react';
+import { Plus, Trash2, Eye, EyeOff, MousePointer, Move, Square, Minus, ZoomIn, ZoomOut, Upload } from 'lucide-react';
 
 export function WorldMap() {
   const { maps, selectedUniverseId, entries, categories, addMapMarker, deleteMapMarker, updateMap, addMapPolygon, deleteMapPolygon, toggleMapLayer, addMapLayer, setSelectedEntry } = useStore();
@@ -98,10 +98,31 @@ export function WorldMap() {
     <div className="h-full flex">
       {/* Left panel - layers & tools */}
       <div className="w-52 border-r border-zinc-800 bg-zinc-900/50 flex flex-col shrink-0">
-        <div className="p-3 border-b border-zinc-800">
+        <div className="p-3 border-b border-zinc-800 space-y-2">
           <select value={activeMapId} onChange={e => setActiveMapId(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200">
             {uniMaps.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
+          <button
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = 'image/*';
+              input.onchange = (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (file && activeMap) {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    updateMap(activeMap.id, { backgroundImage: ev.target?.result as string });
+                  };
+                  reader.readAsDataURL(file);
+                }
+              };
+              input.click();
+            }}
+            className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded transition-colors"
+          >
+            <Upload size={12} /> Import Map Image
+          </button>
         </div>
 
         {/* Tools */}
@@ -151,7 +172,14 @@ export function WorldMap() {
         <div
           ref={canvasRef}
           className="absolute inset-0 cursor-crosshair"
-          style={{ backgroundImage: 'radial-gradient(circle, #27272a 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+          style={{
+            backgroundImage: activeMap?.backgroundImage
+              ? `url(${activeMap.backgroundImage})`
+              : 'radial-gradient(circle, #27272a 1px, transparent 1px)',
+            backgroundSize: activeMap?.backgroundImage ? '100% 100%' : '20px 20px',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}

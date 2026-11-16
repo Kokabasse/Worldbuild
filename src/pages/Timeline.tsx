@@ -32,6 +32,16 @@ export function Timeline() {
   const maxYear = allYears.length > 0 ? Math.max(...allYears) + 50 : 2000;
   const totalRange = maxYear - minYear;
 
+  // Adaptive tick spacing based on time range
+  const getTickSpacing = () => {
+    if (totalRange < 100) return 10; // < 100 years: every 10 years
+    if (totalRange < 500) return 50; // < 500 years: every 50 years
+    if (totalRange < 2000) return 100; // < 2000 years: every 100 years
+    if (totalRange < 10000) return 500; // < 10000 years: every 500 years
+    if (totalRange < 50000) return 1000; // < 50000 years: every 1000 years
+    return 5000; // > 50000 years: every 5000 years
+  };
+
   const yearToX = (year: number) => ((year - minYear) / totalRange) * 3000 * zoom;
 
   const handleSaveEvent = () => {
@@ -112,8 +122,8 @@ export function Timeline() {
 
             {/* Year markers */}
             <div className="absolute top-0 left-0 right-0 h-8 border-b border-zinc-800">
-              {Array.from({ length: Math.ceil(totalRange / (zoom > 1 ? 10 : zoom > 0.5 ? 50 : 100)) + 1 }, (_, i) => {
-                const step = zoom > 1 ? 10 : zoom > 0.5 ? 50 : 100;
+              {Array.from({ length: Math.ceil(totalRange / getTickSpacing()) + 1 }, (_, i) => {
+                const step = getTickSpacing();
                 const year = minYear + i * step;
                 const x = yearToX(year);
                 return (

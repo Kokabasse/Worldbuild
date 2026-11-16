@@ -56,12 +56,25 @@ export function KnowledgeGraph() {
   useEffect(() => {
     if (nodesCount === 0) return;
 
+    let frameCount = 0;
+    const maxFrames = 300; // Stop simulation after N frames to prevent vibration
+
     const simulate = () => {
+      frameCount++;
+      
+      // Stop simulation after max frames to prevent vibration
+      if (frameCount > maxFrames) {
+        return;
+      }
+
       setNodes(prev => {
         const next = prev.map(n => ({ ...n }));
-        const repulsion = 3000;
-        const attraction = 0.005;
-        const damping = 0.85;
+        
+        // Adaptive parameters based on node count
+        const repulsion = Math.min(5000, 2000 + nodesCount * 20);
+        const attraction = 0.003;
+        const damping = 0.75; // Stronger damping to reduce vibration
+        const velocityThreshold = 0.1; // Stop nodes moving too slowly
 
         // Repulsion between all nodes
         for (let i = 0; i < next.length; i++) {
@@ -102,15 +115,20 @@ export function KnowledgeGraph() {
 
         // Center gravity
         for (const node of next) {
-          node.vx -= node.x * 0.001;
-          node.vy -= node.y * 0.001;
+          node.vx -= node.x * 0.0005;
+          node.vy -= node.y * 0.0005;
         }
 
-        // Apply velocity
+        // Apply velocity with threshold
         for (const node of next) {
           if (dragNode.current === node.id) continue;
           node.vx *= damping;
           node.vy *= damping;
+          
+          // Stop very slow movements
+          if (Math.abs(node.vx) < velocityThreshold) node.vx = 0;
+          if (Math.abs(node.vy) < velocityThreshold) node.vy = 0;
+          
           node.x += node.vx;
           node.y += node.vy;
         }
@@ -118,7 +136,9 @@ export function KnowledgeGraph() {
         return next;
       });
 
-      animRef.current = requestAnimationFrame(simulate);
+      if (frameCount <= maxFrames) {
+        animRef.current = requestAnimationFrame(simulate);
+      }
     };
 
     animRef.current = requestAnimationFrame(simulate);
