@@ -16,6 +16,8 @@ export function Timeline() {
   const [formData, setFormData] = useState({ name: '', description: '', startDate: '', endDate: '', categoryId: '', tags: '', associatedEntries: '' });
   const [showPeriodForm, setShowPeriodForm] = useState(false);
   const [periodData, setPeriodData] = useState({ name: '', startDate: '', endDate: '', color: '#6366f1', description: '' });
+  const [timeFilter, setTimeFilter] = useState<'all' | '100' | '500' | '1000' | 'custom'>('all');
+  const [customRange, setCustomRange] = useState({ start: '', end: '' });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const uniEntries = entries.filter(e => e.universeId === selectedUniverseId);
@@ -32,17 +34,42 @@ export function Timeline() {
   const maxYear = allYears.length > 0 ? Math.max(...allYears) + 50 : 2000;
   const totalRange = maxYear - minYear;
 
-  // Adaptive tick spacing based on time range
-  const getTickSpacing = () => {
-    if (totalRange < 100) return 10; // < 100 years: every 10 years
-    if (totalRange < 500) return 50; // < 500 years: every 50 years
-    if (totalRange < 2000) return 100; // < 2000 years: every 100 years
-    if (totalRange < 10000) return 500; // < 10000 years: every 500 years
-    if (totalRange < 50000) return 1000; // < 50000 years: every 1000 years
-    return 5000; // > 50000 years: every 5000 years
+  // Time filter logic
+  const getFilteredRange = () => {
+    if (timeFilter === 'all') return { min: minYear, max: maxYear };
+    if (timeFilter === 'custom' && customRange.start && customRange.end) {
+      return { min: parseYear(customRange.start), max: parseYear(customRange.end) };
+    }
+    const years = parseInt(timeFilter);
+    const center = (minYear + maxYear) / 2;
+    return { min: center - years / 2, max: center + years / 2 };
   };
 
-  const yearToX = (year: number) => ((year - minYear) / totalRange) * 3000 * zoom;
+  const filteredRange = getFilteredRange();
+  const filteredMinYear = filteredRange.min;
+  const filteredMaxYear = filteredRange.max;
+  const filteredTotalRange = filteredMaxYear - filteredMinYear;
+
+  // Filter events by time range
+  const filteredEvents = uniEvents.filter(evt => {
+    const start = parseYear(evt.startDate);
+    const end = evt.endDate ? parseYear(evt.endDate) : start;
+    return (start >= filteredMinYear && start <= filteredMaxYear) ||
+           (end >= filteredMinYear && end <= filteredMaxYear) ||
+           (start <= filteredMinYear && end >= filteredMaxYear);
+  });
+
+  // Adaptive tick spacing based on time range
+  const getTickSpacing = () => {
+    if (filteredTotalRange < 100) return 10;
+    if (filteredTotalRange < 500) return 50;
+    if (filteredTotalRange < 2000) return 100;
+    if (filteredTotalRange < 10000) return 500;
+    if (filteredTotalRange < 50000) return 1000;
+    return 5000;
+  };
+
+  const yearToX = (year: number) => ((year - filteredMinYear) / filteredTotalRange) * 3000 * zoom;
 
   const handleSaveEvent = () => {
     if (!formData.name || !formData.startDate) return;
@@ -86,11 +113,29 @@ export function Timeline() {
         <button onClick={() => setShowPeriodForm(!showPeriodForm)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded transition-colors">
           <Plus size={12} /> Period
         </button>
+        <div className="h-4 w-px bg-zinc-800 mx-1" />
+        {/* Time filter buttons */}
+        <div className="flex gap-1">
+          {[
+            { value: 'all', label: 'All' },
+            { value: '100', label: '100y' },
+            { value: '500', label: '500y' },
+            { value: '1000', label: '1K' },
+          ].map(f => (
+            <button
+              key={f.value}
+              onClick={() => setTimeFilter(f.value as any)}
+              className={`px-2 py-1 rounded text-[10px] transition-colors ${timeFilter === f.value ? 'bg-zinc-700 text-zinc-200' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
         <div className="flex-1" />
         <button onClick={() => setZoom(z => Math.max(0.2, z * 0.8))} className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400"><ZoomOut size={14} /></button>
         <span className="text-xs text-zinc-500 w-12 text-center">{(zoom * 100).toFixed(0)}%</span>
         <button onClick={() => setZoom(z => Math.min(5, z * 1.2))} className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400"><ZoomIn size={14} /></button>
-        <span className="text-xs text-zinc-600 ml-2">{uniEvents.length} events</span>
+        <span className="text-xs text-zinc-600 ml-2">{filteredEvents.length} events</span>
       </div>
 
       {/* Period form */}
@@ -108,23 +153,27 @@ export function Timeline() {
       {/* Timeline canvas */}
       <div className="flex-1 overflow-hidden flex">
         <div ref={scrollRef} className="flex-1 overflow-x-auto overflow-y-auto">
-          <div className="relative h-full min-h-[400px]" style={{ width: `${3000 * zoom}px`, minWidth: '100%' }}>
+          <div className="relative h-full min-h-[400px]" style={{ width: `${Math.max(3000 * zoom, 1000)}px`, minWidth: '100%' }}>
             {/* Period bands */}
             {uniPeriods.map(period => {
-              const x1 = yearToX(parseYear(period.startDate));
-              const x2 = yearToX(parseYear(period.endDate));
+              const start = parseYear(period.startDate);
+              const end = parseYear(period.endDate);
+              // Only show if period overlaps with filtered range
+              if (end < filteredMinYear || start > filteredMaxYear) return null;
+              const x1 = yearToX(Math.max(start, filteredMinYear));
+              const x2 = yearToX(Math.min(end, filteredMaxYear));
               return (
-                <div key={period.id} className="absolute top-0 bottom-0 opacity-10" style={{ left: x1, width: x2 - x1, backgroundColor: period.color }}>
-                  <div className="absolute top-2 left-2 text-[10px] font-medium opacity-70" style={{ color: period.color }}>{period.name}</div>
+                <div key={period.id} className="absolute top-0 bottom-0 opacity-15" style={{ left: x1, width: Math.max(x2 - x1, 2), backgroundColor: period.color }}>
+                  <div className="absolute top-2 left-2 text-[10px] font-semibold opacity-80" style={{ color: period.color }}>{period.name}</div>
                 </div>
               );
             })}
 
             {/* Year markers */}
             <div className="absolute top-0 left-0 right-0 h-8 border-b border-zinc-800">
-              {Array.from({ length: Math.ceil(totalRange / getTickSpacing()) + 1 }, (_, i) => {
+              {Array.from({ length: Math.ceil(filteredTotalRange / getTickSpacing()) + 1 }, (_, i) => {
                 const step = getTickSpacing();
-                const year = minYear + i * step;
+                const year = filteredMinYear + i * step;
                 const x = yearToX(year);
                 return (
                   <div key={i} className="absolute top-0 bottom-0" style={{ left: x }}>
@@ -137,7 +186,7 @@ export function Timeline() {
 
             {/* Events */}
             <div className="absolute top-10 left-0 right-0 bottom-0">
-              {uniEvents.map((evt, idx) => {
+              {filteredEvents.map((evt, idx) => {
                 const x = yearToX(parseYear(evt.startDate));
                 const endX = evt.endDate ? yearToX(parseYear(evt.endDate)) : x + 4;
                 const cat = categories.find(c => c.id === evt.categoryId);
@@ -150,12 +199,14 @@ export function Timeline() {
                     style={{ left: x, top: y }}
                     onClick={() => setSelectedEvent(evt.id === selectedEvent ? null : evt.id)}
                   >
+                    {/* Vertical line indicator */}
+                    <div className="absolute top-0 w-px h-full opacity-20" style={{ backgroundColor: cat?.color || '#6b7280' }} />
                     <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-full border-2 shrink-0" style={{ borderColor: cat?.color || '#6b7280', backgroundColor: cat?.color || '#6b7280' }} />
+                      <div className="w-3 h-3 rounded-full border-2 shrink-0 shadow-sm" style={{ borderColor: cat?.color || '#6b7280', backgroundColor: cat?.color || '#6b7280' }} />
                       {endX > x + 4 && (
                         <div className="h-1.5 rounded-full opacity-60" style={{ width: endX - x - 4, backgroundColor: cat?.color || '#6b7280' }} />
                       )}
-                      <span className="text-[10px] text-zinc-300 whitespace-nowrap ml-1">{evt.name}</span>
+                      <span className="text-[10px] text-zinc-300 whitespace-nowrap ml-1 font-medium">{evt.name}</span>
                     </div>
                     {selectedEvent === evt.id && (
                       <div className="absolute top-5 left-0 bg-zinc-900 border border-zinc-700 rounded-lg p-3 w-64 shadow-xl z-30">

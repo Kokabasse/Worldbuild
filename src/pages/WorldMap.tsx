@@ -173,12 +173,10 @@ export function WorldMap() {
           ref={canvasRef}
           className="absolute inset-0 cursor-crosshair"
           style={{
-            backgroundImage: activeMap?.backgroundImage
-              ? `url(${activeMap.backgroundImage})`
-              : 'radial-gradient(circle, #27272a 1px, transparent 1px)',
-            backgroundSize: activeMap?.backgroundImage ? '100% 100%' : '20px 20px',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
+            backgroundImage: !activeMap?.backgroundImage
+              ? 'radial-gradient(circle, #27272a 1px, transparent 1px)'
+              : undefined,
+            backgroundSize: '20px 20px',
           }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
@@ -188,6 +186,22 @@ export function WorldMap() {
           onClick={handleClick}
         >
           <div style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`, transformOrigin: '0 0' }}>
+            {/* Background image */}
+            {activeMap?.backgroundImage && (
+              <img
+                src={activeMap.backgroundImage}
+                alt="Map background"
+                className="absolute pointer-events-none select-none"
+                style={{
+                  left: -1000,
+                  top: -1000,
+                  width: 2000,
+                  height: 2000,
+                  objectFit: 'contain',
+                }}
+                draggable={false}
+              />
+            )}
             {/* Grid background */}
             <svg className="absolute inset-0 w-[4000px] h-[4000px]" style={{ left: -2000, top: -2000 }}>
               {/* Polygons */}
