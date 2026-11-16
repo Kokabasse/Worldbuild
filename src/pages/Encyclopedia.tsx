@@ -106,17 +106,17 @@ export function Encyclopedia() {
                   <button
                     key={entry.id}
                     onClick={() => setSelectedEntry(entry.id)}
-                    className="w-full flex items-center gap-4 px-4 py-3 hover:bg-zinc-800/30 transition-colors text-left"
+                    className="w-full flex items-center gap-5 px-6 py-4 hover:bg-zinc-800/30 transition-colors text-left"
                   >
-                    <div className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: cat?.color || '#6b7280' }} />
+                    <div className="w-4 h-4 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: cat?.color || '#6b7280' }} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-zinc-200 truncate">{entry.name}</div>
-                      <div className="text-xs text-zinc-500 truncate">{entry.description || cat?.name || 'No description'}</div>
+                      <div className="text-xs text-zinc-500 truncate mt-0.5">{entry.description || cat?.name || 'No description'}</div>
                     </div>
                     {entry.tags.length > 0 && (
-                      <div className="hidden md:flex gap-1">
-                        {entry.tags.slice(0, 2).map(t => (
-                          <span key={t} className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">{t}</span>
+                      <div className="hidden md:flex gap-1.5">
+                        {entry.tags.slice(0, 3).map(t => (
+                          <span key={t} className="text-[11px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">{t}</span>
                         ))}
                       </div>
                     )}

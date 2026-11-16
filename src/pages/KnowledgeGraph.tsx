@@ -70,11 +70,11 @@ export function KnowledgeGraph() {
       setNodes(prev => {
         const next = prev.map(n => ({ ...n }));
         
-        // Adaptive parameters based on node count
-        const repulsion = Math.min(5000, 2000 + nodesCount * 20);
-        const attraction = 0.003;
-        const damping = 0.75; // Stronger damping to reduce vibration
-        const velocityThreshold = 0.1; // Stop nodes moving too slowly
+        // Much weaker forces to prevent vibration
+        const repulsion = 8000; // Very strong repulsion
+        const attraction = 0.0005; // Very weak attraction
+        const damping = 0.6; // Very strong damping
+        const velocityThreshold = 0.5; // Higher threshold to stop movement
 
         // Repulsion between all nodes
         for (let i = 0; i < next.length; i++) {
@@ -92,7 +92,7 @@ export function KnowledgeGraph() {
           }
         }
 
-        // Attraction along edges
+        // Very weak attraction along edges
         const relevantRels = uniRels.filter(r =>
           next.some(n => n.id === r.sourceId) && next.some(n => n.id === r.targetId)
         );
@@ -103,31 +103,39 @@ export function KnowledgeGraph() {
             const dx = target.x - source.x;
             const dy = target.y - source.y;
             const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            const force = dist * attraction;
-            const fx = (dx / dist) * force;
-            const fy = (dy / dist) * force;
-            source.vx += fx;
-            source.vy += fy;
-            target.vx -= fx;
-            target.vy -= fy;
+            // Only attract if very far apart
+            if (dist > 200) {
+              const force = (dist - 200) * attraction;
+              const fx = (dx / dist) * force;
+              const fy = (dy / dist) * force;
+              source.vx += fx;
+              source.vy += fy;
+              target.vx -= fx;
+              target.vy -= fy;
+            }
           }
         }
 
-        // Center gravity
+        // Very weak center gravity
         for (const node of next) {
-          node.vx -= node.x * 0.0005;
-          node.vy -= node.y * 0.0005;
+          node.vx -= node.x * 0.0001;
+          node.vy -= node.y * 0.0001;
         }
 
-        // Apply velocity with threshold
+        // Apply velocity with strong damping
         for (const node of next) {
           if (dragNode.current === node.id) continue;
           node.vx *= damping;
           node.vy *= damping;
           
-          // Stop very slow movements
+          // Stop slow movements aggressively
           if (Math.abs(node.vx) < velocityThreshold) node.vx = 0;
           if (Math.abs(node.vy) < velocityThreshold) node.vy = 0;
+          
+          // Limit max velocity
+          const maxVel = 10;
+          node.vx = Math.max(-maxVel, Math.min(maxVel, node.vx));
+          node.vy = Math.max(-maxVel, Math.min(maxVel, node.vy));
           
           node.x += node.vx;
           node.y += node.vy;

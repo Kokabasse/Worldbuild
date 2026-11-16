@@ -21,6 +21,7 @@ export function Orrery() {
   const [mode, setMode] = useState<'schematic' | 'simulation'>('schematic');
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [tilt, setTilt] = useState(60);
+  const [rotation, setRotation] = useState(0);
   const [time, setTime] = useState(0);
   const animRef = useRef<number>(0);
 
@@ -41,10 +42,35 @@ export function Orrery() {
     const angle = (body.angle || 0) + (mode === 'simulation' ? (time * 360) / (body.orbitalPeriod || 365) : 0);
     const rad = (angle * Math.PI) / 180;
     const dist = mode === 'schematic' ? getSchematicDistance(body) : body.orbitalDistance;
-    return {
-      x: Math.cos(rad) * dist,
-      y: Math.sin(rad) * dist * (1 - (body.orbitalEccentricity || 0) * 0.3),
-    };
+    
+    // Position 3D dans le plan orbital (z = 0 pour simplifier)
+    const x3d = Math.cos(rad) * dist;
+    const y3d = Math.sin(rad) * dist * (1 - (body.orbitalEccentricity || 0) * 0.3);
+    const z3d = 0;
+    
+    if (viewMode === '2d') {
+      return { x: x3d, y: y3d, z: 0, scale: 1 };
+    }
+    
+    // Projection 3D avec rotation
+    const tiltRad = (tilt * Math.PI) / 180;
+    const rotRad = (rotation * Math.PI) / 180;
+    
+    // Rotation autour de l'axe Y
+    const x1 = x3d * Math.cos(rotRad) + z3d * Math.sin(rotRad);
+    const z1 = -x3d * Math.sin(rotRad) + z3d * Math.cos(rotRad);
+    const y1 = y3d;
+    
+    // Rotation autour de l'axe X (tilt)
+    const x2 = x1;
+    const y2 = y1 * Math.cos(tiltRad) - z1 * Math.sin(tiltRad);
+    const z2 = y1 * Math.sin(tiltRad) + z1 * Math.cos(tiltRad);
+    
+    // Perspective projection
+    const perspective = 800;
+    const scale = perspective / (perspective + z2);
+    
+    return { x: x2 * scale, y: y2 * scale, z: z2, scale };
   };
 
   const getSchematicDistance = (body: typeof uniBodies[0]) => {
@@ -108,10 +134,16 @@ export function Orrery() {
             <button onClick={() => setViewMode('3d')} className={`flex-1 px-2 py-1 rounded text-[10px] ${viewMode === '3d' ? 'bg-zinc-700 text-zinc-200' : 'text-zinc-500 hover:bg-zinc-800'}`}>3D</button>
           </div>
           {viewMode === '3d' && (
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] text-zinc-500">Tilt:</span>
-              <input type="range" min="0" max="90" value={tilt} onChange={e => setTilt(parseInt(e.target.value))} className="flex-1 h-1 accent-indigo-500" />
-            </div>
+            <>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-zinc-500">Tilt:</span>
+                <input type="range" min="0" max="90" value={tilt} onChange={e => setTilt(parseInt(e.target.value))} className="flex-1 h-1 accent-indigo-500" />
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-zinc-500">Rotate:</span>
+                <input type="range" min="0" max="360" value={rotation} onChange={e => setRotation(parseInt(e.target.value))} className="flex-1 h-1 accent-indigo-500" />
+              </div>
+            </>
           )}
           <div className="flex gap-1">
             <button onClick={() => setShowLabels(!showLabels)} className={`flex-1 px-2 py-1 rounded text-[10px] ${showLabels ? 'bg-zinc-700 text-zinc-200' : 'text-zinc-500 hover:bg-zinc-800'}`}>Labels</button>
@@ -137,8 +169,7 @@ export function Orrery() {
       </div>
 
       {/* Orrery visualization */}
-      <div className="flex-1 relative overflow-hidden bg-zinc-950" style={viewMode === '3d' ? { perspective: '1000px' } : {}}>
-        <div style={viewMode === '3d' ? { transformStyle: 'preserve-3d', transform: `rotateX(${tilt}deg)`, width: '100%', height: '100%', position: 'absolute', inset: 0 } : {}}>
+      <div className="flex-1 relative overflow-hidden bg-zinc-950">
         <svg
           width="100%"
           height="100%"
@@ -171,35 +202,37 @@ export function Orrery() {
             );
           })}
 
-          {/* Celestial bodies */}
-          {uniBodies.map(body => {
-            const pos = getBodyPosition(body);
-            const radius = getBodyRadius(body);
-            return (
-              <g key={body.id} className="cursor-pointer" onClick={() => setSelectedBody(body.id)}>
-                {/* Glow for stars */}
-                {body.type === 'star' && (
-                  <circle cx={pos.x} cy={pos.y} r={radius * 2} fill={body.color} opacity={0.15} />
-                )}
-                <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r={radius}
-                  fill={body.color}
-                  stroke={selectedBody === body.id ? '#ffffff' : 'transparent'}
-                  strokeWidth={1.5}
-                  className="hover:opacity-80 transition-opacity"
-                />
-                {showLabels && (
-                  <text x={pos.x} y={pos.y + radius + 10} textAnchor="middle" fill="#a1a1aa" fontSize={8} className="select-none pointer-events-none">
-                    {body.name}
-                  </text>
-                )}
-              </g>
-            );
-          })}
+          {/* Celestial bodies - sorted by depth for 3D rendering */}
+          {uniBodies
+            .map(body => ({ body, pos: getBodyPosition(body) }))
+            .sort((a, b) => (viewMode === '3d' ? a.pos.z - b.pos.z : 0))
+            .map(({ body, pos }) => {
+              const radius = getBodyRadius(body) * (viewMode === '3d' ? pos.scale : 1);
+              const opacity = viewMode === '3d' ? Math.max(0.3, Math.min(1, (pos.z + 400) / 800)) : 1;
+              return (
+                <g key={body.id} className="cursor-pointer" onClick={() => setSelectedBody(body.id)} opacity={opacity}>
+                  {/* Glow for stars */}
+                  {body.type === 'star' && (
+                    <circle cx={pos.x} cy={pos.y} r={radius * 2} fill={body.color} opacity={0.15} />
+                  )}
+                  <circle
+                    cx={pos.x}
+                    cy={pos.y}
+                    r={radius}
+                    fill={body.color}
+                    stroke={selectedBody === body.id ? '#ffffff' : 'transparent'}
+                    strokeWidth={1.5}
+                    className="hover:opacity-80 transition-opacity"
+                  />
+                  {showLabels && (
+                    <text x={pos.x} y={pos.y + radius + 10} textAnchor="middle" fill="#a1a1aa" fontSize={8} className="select-none pointer-events-none">
+                      {body.name}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
         </svg>
-        </div>
 
         {/* Selected body info */}
         {selected && (
