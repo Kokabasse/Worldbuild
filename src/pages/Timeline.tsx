@@ -13,7 +13,7 @@ export function Timeline() {
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '', startDate: '', endDate: '', categoryId: '', tags: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', startDate: '', endDate: '', categoryId: '', tags: '', associatedEntries: '' });
   const [showPeriodForm, setShowPeriodForm] = useState(false);
   const [periodData, setPeriodData] = useState({ name: '', startDate: '', endDate: '', color: '#6366f1', description: '' });
 
@@ -37,20 +37,21 @@ export function Timeline() {
   const handleSaveEvent = () => {
     if (!formData.name || !formData.startDate) return;
     const tags = formData.tags.split(',').map(t => t.trim()).filter(Boolean);
+    const associatedEntries = formData.associatedEntries.split(',').map(s => s.trim()).filter(Boolean);
     if (editId) {
-      updateTimelineEvent(editId, { ...formData, tags });
+      updateTimelineEvent(editId, { name: formData.name, description: formData.description, startDate: formData.startDate, endDate: formData.endDate, categoryId: formData.categoryId, tags, associatedEntries });
     } else {
-      createTimelineEvent({ ...formData, tags, universeId: selectedUniverseId || '' });
+      createTimelineEvent({ name: formData.name, description: formData.description, startDate: formData.startDate, endDate: formData.endDate, categoryId: formData.categoryId, tags, associatedEntries, universeId: selectedUniverseId || '' });
     }
     setShowForm(false);
     setEditId(null);
-    setFormData({ name: '', description: '', startDate: '', endDate: '', categoryId: '', tags: '' });
+    setFormData({ name: '', description: '', startDate: '', endDate: '', categoryId: '', tags: '', associatedEntries: '' });
   };
 
   const handleEditEvent = (id: string) => {
     const evt = uniEvents.find(e => e.id === id);
     if (evt) {
-      setFormData({ name: evt.name, description: evt.description, startDate: evt.startDate, endDate: evt.endDate, categoryId: evt.categoryId, tags: evt.tags.join(', ') });
+      setFormData({ name: evt.name, description: evt.description, startDate: evt.startDate, endDate: evt.endDate, categoryId: evt.categoryId, tags: evt.tags.join(', '), associatedEntries: evt.associatedEntries.join(', ') });
       setEditId(id);
       setShowForm(true);
     }
@@ -69,7 +70,7 @@ export function Timeline() {
     <div className="h-full flex flex-col">
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-800">
-        <button onClick={() => { setShowForm(true); setEditId(null); setFormData({ name: '', description: '', startDate: '', endDate: '', categoryId: '', tags: '' }); }} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded transition-colors">
+        <button onClick={() => { setShowForm(true); setEditId(null); setFormData({ name: '', description: '', startDate: '', endDate: '', categoryId: '', tags: '', associatedEntries: '' }); }} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded transition-colors">
           <Plus size={12} /> Event
         </button>
         <button onClick={() => setShowPeriodForm(!showPeriodForm)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded transition-colors">
@@ -212,6 +213,24 @@ export function Timeline() {
               </select>
               <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Description" rows={3} className="w-full bg-zinc-800 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 resize-none" />
               <input value={formData.tags} onChange={e => setFormData({ ...formData, tags: e.target.value })} placeholder="Tags (comma separated)" className="w-full bg-zinc-800 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-500" />
+              <div>
+                <label className="text-[10px] text-zinc-500 mb-1 block">Associated Entry IDs (comma separated)</label>
+                <input value={formData.associatedEntries} onChange={e => setFormData({ ...formData, associatedEntries: e.target.value })} placeholder="entry-id-1, entry-id-2" className="w-full bg-zinc-800 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-500" />
+                <div className="mt-1 flex flex-wrap gap-1 max-h-20 overflow-auto">
+                  {uniEntries.slice(0, 10).map(e => (
+                    <button key={e.id} onClick={() => {
+                      const current = formData.associatedEntries.split(',').map(s => s.trim()).filter(Boolean);
+                      if (current.includes(e.id)) {
+                        setFormData({ ...formData, associatedEntries: current.filter(id => id !== e.id).join(', ') });
+                      } else {
+                        setFormData({ ...formData, associatedEntries: [...current, e.id].join(', ') });
+                      }
+                    }} className={`text-[10px] px-1.5 py-0.5 rounded ${formData.associatedEntries.includes(e.id) ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/50' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'}`}>
+                      {e.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="flex gap-2 mt-3">
               <button onClick={handleSaveEvent} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded">Save</button>

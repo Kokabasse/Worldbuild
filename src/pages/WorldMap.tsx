@@ -15,6 +15,7 @@ export function WorldMap() {
   const [polygonPoints, setPolygonPoints] = useState<{ x: number; y: number }[]>([]);
   const [showPanel, setShowPanel] = useState(false);
   const [markerForm, setMarkerForm] = useState({ type: 'city', label: '', entryId: '' });
+  const [pendingMarkerPos, setPendingMarkerPos] = useState<{ x: number; y: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -58,20 +59,9 @@ export function WorldMap() {
     const pos = getMousePos(e);
 
     if (tool === 'marker') {
+      setPendingMarkerPos(pos);
       setShowPanel(true);
       setMarkerForm({ type: 'city', label: '', entryId: '' });
-      const tempPos = pos;
-      const handleConfirm = () => {
-        if (!activeMap) return;
-        const layerId = activeMap.layers[0]?.id || '';
-        addMapMarker(activeMap.id, {
-          id: uuid(), x: tempPos.x, y: tempPos.y, type: markerForm.type,
-          label: markerForm.label || 'Marker', entryId: markerForm.entryId || null,
-          layerId, icon: 'circle',
-        });
-        setShowPanel(false);
-      };
-      (window as any).__markerConfirm = handleConfirm;
     } else if (tool === 'polygon') {
       setPolygonPoints([...polygonPoints, pos]);
     }
@@ -254,8 +244,18 @@ export function WorldMap() {
               {uniEntries.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select>
             <div className="flex gap-1">
-              <button onClick={() => (window as any).__markerConfirm?.()} className="flex-1 px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded">Place</button>
-              <button onClick={() => setShowPanel(false)} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded">Cancel</button>
+              <button onClick={() => {
+                if (!activeMap || !pendingMarkerPos) return;
+                const layerId = activeMap.layers[0]?.id || '';
+                addMapMarker(activeMap.id, {
+                  id: uuid(), x: pendingMarkerPos.x, y: pendingMarkerPos.y, type: markerForm.type,
+                  label: markerForm.label || 'Marker', entryId: markerForm.entryId || null,
+                  layerId, icon: 'circle',
+                });
+                setShowPanel(false);
+                setPendingMarkerPos(null);
+              }} className="flex-1 px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded">Place</button>
+              <button onClick={() => { setShowPanel(false); setPendingMarkerPos(null); }} className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs rounded">Cancel</button>
             </div>
           </div>
         )}

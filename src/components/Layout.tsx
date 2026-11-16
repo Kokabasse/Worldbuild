@@ -1,5 +1,5 @@
 import { useStore } from '../store/useStore';
-import { LayoutDashboard, BookOpen, Map, Clock, Orbit, Settings, GitGraph, Search, Globe } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Map, Clock, Orbit, Settings, GitGraph, Search, Globe, ArrowLeftRight } from 'lucide-react';
 import type { Page } from '../types';
 
 const navItems: { page: Page; label: string; icon: React.ReactNode }[] = [
@@ -13,8 +13,18 @@ const navItems: { page: Page; label: string; icon: React.ReactNode }[] = [
 ];
 
 export function Layout() {
-  const { currentPage, setPage, selectedUniverseId, universes, setSearchOpen, setSelectedEntry, setEditingEntry } = useStore();
+  const { currentPage, setPage, selectedUniverseId, universes, setSearchOpen, setSelectedEntry, setEditingEntry, selectUniverse } = useStore();
   const universe = universes.find(u => u.id === selectedUniverseId);
+
+  const handleSwitchUniverse = () => {
+    if (universes.length > 1) {
+      const current = universes.findIndex(u => u.id === selectedUniverseId);
+      const next = (current + 1) % universes.length;
+      selectUniverse(universes[next].id);
+    } else {
+      useStore.setState({ selectedUniverseId: null });
+    }
+  };
 
   return (
     <aside className="w-56 h-full bg-zinc-900 border-r border-zinc-800 flex flex-col shrink-0">
@@ -23,7 +33,10 @@ export function Layout() {
           <Globe size={16} className="text-indigo-400" />
           <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">World Builder</span>
         </div>
-        <div className="text-sm font-medium text-zinc-300 truncate">{universe?.name || 'No Universe'}</div>
+        <button onClick={handleSwitchUniverse} className="flex items-center gap-1.5 w-full group" title="Switch universe">
+          <div className="text-sm font-medium text-zinc-300 truncate flex-1 text-left group-hover:text-indigo-300 transition-colors">{universe?.name || 'No Universe'}</div>
+          <ArrowLeftRight size={12} className="text-zinc-600 group-hover:text-zinc-400 transition-colors shrink-0" />
+        </button>
       </div>
 
       <nav className="flex-1 py-2 px-2">

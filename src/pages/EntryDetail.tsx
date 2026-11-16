@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore';
 import { ArrowLeft, Edit3, Trash2, Link2, Tag, Calendar } from 'lucide-react';
 
 export function EntryDetail() {
-  const { entries, categories, relationships, relationshipTypes, selectedEntryId, setSelectedEntry, setEditingEntry, deleteEntry, createRelationship } = useStore();
+  const { entries, categories, relationships, relationshipTypes, selectedEntryId, setSelectedEntry, setEditingEntry, deleteEntry, createRelationship, setPage } = useStore();
   const [showRelForm, setShowRelForm] = useState(false);
   const [relTarget, setRelTarget] = useState('');
   const [relType, setRelType] = useState('');
@@ -46,11 +46,17 @@ export function EntryDetail() {
           <ArrowLeft size={16} />
         </button>
         <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-0.5">
+            <button onClick={() => { setSelectedEntry(null); setPage('encyclopedia'); }} className="hover:text-zinc-300 transition-colors">Encyclopedia</button>
+            <span>/</span>
+            <span className="text-zinc-600">{category?.name || 'Uncategorized'}</span>
+            <span>/</span>
+            <span className="text-zinc-400">{entry.name}</span>
+          </div>
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: category?.color || '#6b7280' }} />
-            <h1 className="text-base font-semibold text-zinc-100 truncate">{entry.name}</h1>
+            <h1 className="text-sm font-semibold text-zinc-100 truncate">{entry.name}</h1>
           </div>
-          <div className="text-xs text-zinc-500">{category?.name || 'Uncategorized'}</div>
         </div>
         <button onClick={() => setEditingEntry(entry.id)} className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200" title="Edit">
           <Edit3 size={14} />

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useStore } from './store/useStore';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
@@ -13,7 +14,18 @@ import { SearchModal } from './components/SearchModal';
 import { UniverseSelector } from './components/UniverseSelector';
 
 export default function App() {
-  const { currentPage, selectedEntryId, editingEntryId, selectedUniverseId, searchOpen } = useStore();
+  const { currentPage, selectedEntryId, editingEntryId, selectedUniverseId, searchOpen, setSearchOpen } = useStore();
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [setSearchOpen]);
 
   if (!selectedUniverseId) {
     return <UniverseSelector />;
